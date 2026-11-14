@@ -1,0 +1,21 @@
+# ninja log v5
+16551	16739	8161302044443936	raylib-populate-prefix/src/raylib-populate-stamp/raylib-populate-update	57b6409d709edb60
+17423	17589	8161302052976258	C:/Users/wazzu/phillipSpel/build/_deps/raylib-subbuild/CMakeFiles/raylib-populate-complete	d0a29ed569231638
+17144	17284	8161302049922978	C:/Users/wazzu/phillipSpel/build/_deps/raylib-subbuild/raylib-populate-prefix/src/raylib-populate-stamp/raylib-populate-install	c654b29be882a420
+6	151	8161301878585033	C:/Users/wazzu/phillipSpel/build/_deps/raylib-subbuild/raylib-populate-prefix/src/raylib-populate-stamp/raylib-populate-mkdir	a42ce66c8bcf4a6c
+17423	17589	8161302052976258	raylib-populate-prefix/src/raylib-populate-stamp/raylib-populate-done	d0a29ed569231638
+17423	17589	8161302052976258	C:/Users/wazzu/phillipSpel/build/_deps/raylib-subbuild/raylib-populate-prefix/src/raylib-populate-stamp/raylib-populate-done	d0a29ed569231638
+17026	17144	8161302048544031	C:/Users/wazzu/phillipSpel/build/_deps/raylib-subbuild/raylib-populate-prefix/src/raylib-populate-stamp/raylib-populate-build	1d3cb51131505a6b
+16551	16739	8161302044443936	C:/Users/wazzu/phillipSpel/build/_deps/raylib-subbuild/raylib-populate-prefix/src/raylib-populate-stamp/raylib-populate-update	57b6409d709edb60
+17026	17144	8161302048544031	raylib-populate-prefix/src/raylib-populate-stamp/raylib-populate-build	1d3cb51131505a6b
+16898	17026	8161302047355535	raylib-populate-prefix/src/raylib-populate-stamp/raylib-populate-configure	1a728dcf85aa9630
+152	16550	8161302042546696	raylib-populate-prefix/src/raylib-populate-stamp/raylib-populate-download	ce966397330c715e
+152	16550	8161302042546696	C:/Users/wazzu/phillipSpel/build/_deps/raylib-subbuild/raylib-populate-prefix/src/raylib-populate-stamp/raylib-populate-download	ce966397330c715e
+17423	17589	8161302052976258	CMakeFiles/raylib-populate-complete	d0a29ed569231638
+17285	17422	8161302051310078	C:/Users/wazzu/phillipSpel/build/_deps/raylib-subbuild/raylib-populate-prefix/src/raylib-populate-stamp/raylib-populate-test	68714ff256ec542b
+17144	17284	8161302049922978	raylib-populate-prefix/src/raylib-populate-stamp/raylib-populate-install	c654b29be882a420
+16751	16898	8161302046052847	raylib-populate-prefix/src/raylib-populate-stamp/raylib-populate-patch	574ce9ff9b1c8d2f
+16898	17026	8161302047355535	C:/Users/wazzu/phillipSpel/build/_deps/raylib-subbuild/raylib-populate-prefix/src/raylib-populate-stamp/raylib-populate-configure	1a728dcf85aa9630
+17285	17422	8161302051310078	raylib-populate-prefix/src/raylib-populate-stamp/raylib-populate-test	68714ff256ec542b
+16751	16898	8161302046052847	C:/Users/wazzu/phillipSpel/build/_deps/raylib-subbuild/raylib-populate-prefix/src/raylib-populate-stamp/raylib-populate-patch	574ce9ff9b1c8d2f
+6	151	8161301878585033	raylib-populate-prefix/src/raylib-populate-stamp/raylib-populate-mkdir	a42ce66c8bcf4a6c
