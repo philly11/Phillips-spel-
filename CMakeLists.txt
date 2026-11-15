@@ -41,4 +41,5 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 # Link raylib
 target_link_libraries(${PROJECT_NAME} PRIVATE raylib)
 
-
+enable_testing()
+add_subdirectory(tests)
