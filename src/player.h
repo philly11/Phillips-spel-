@@ -1,12 +1,5 @@
 #pragma once
-
-struct Vec3
-{
-    float x = 0.0f;
-    float y = 0.0f;
-    float z = 0.0f;
-};
-
+#include "vec3.h"
 struct PlayerInput
 {
     float moveForward = 0.0f; // -1 to 1
@@ -22,9 +15,11 @@ class Player
 public:
     void Update(const PlayerInput &input, float dt, float groundHeight);
 
-    const Vec3 &GetPosition() const { return position; }
+        const Vec3 &GetPosition() const { return position; }
     float GetYaw() const { return yaw; }
     float GetPitch() const { return pitch; }
+
+    Vec3 GetLookDirection() const;
 
     bool IsOnGround() const { return onGround; }
     float GetVelocityY() const { return velocityY; }

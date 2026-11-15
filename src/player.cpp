@@ -87,3 +87,8 @@ void Player::ResolveGround(float groundHeight, float dt, bool wasOnGround)
     velocityY = 0.0f;
     onGround = true;
 }
+
+Vec3 Player::GetLookDirection() const
+{
+    return {std::sin(yaw) * std::cos(pitch), -std::sin(pitch), std::cos(yaw) * std::cos(pitch)};
+}

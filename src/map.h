@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <vector>
 #include <utility>
+#include "ray.h"
+
 struct Box
 {
     float x, y, z;              // Position of the box
@@ -16,6 +18,7 @@ public:
 
     float GetGroundHeight(float x, float z, float feetY) const;
     float WallOverlap(float x, float z, float feetY, float radius) const;
+    float RayCast(pgame::Ray &ray, float maxDistance) const;
     const std::vector<Box> &GetBoxes() const { return boxes; }
     static constexpr float kStepHeight = 0.3f; // Maximum height the player can step up
 

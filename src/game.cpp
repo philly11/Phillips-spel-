@@ -74,13 +74,7 @@ void Game::ApplyWallCollision(const Vec3 &prev)
 void Game::UpdateCamera()
 {
     const Vec3 &pos = player.GetPosition();
-    const float yaw = player.GetYaw();
-    const float pitch = player.GetPitch();
-
-    const Vector3 look = {
-        std::sin(yaw) * std::cos(pitch),
-        -std::sin(pitch),
-        std::cos(yaw) * std::cos(pitch)};
+    const Vec3 look = player.GetLookDirection();
 
     camera.position = {pos.x, pos.y, pos.z};
     camera.target = {pos.x + look.x, pos.y + look.y, pos.z + look.z};
