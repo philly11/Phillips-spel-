@@ -1,6 +1,7 @@
 #pragma once
 #include "raylib.h"
 #include "player.h"
+#include "map.h"
 
 class Game
 {
@@ -9,7 +10,8 @@ public:
 
 private:
     Player player;
-    Camera3D camera = {0};
+    Camera3D camera = {};
+    Map map;
 
     void Update();
     void Draw();
