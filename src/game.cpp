@@ -1,9 +1,9 @@
 #include "game.h"
-#include "raylib.h"
 
 void Game::Run()
 {
     InitWindow(800, 600, "phillips Game");
+
     SetTargetFPS(60);
 
     camera.position = {4, 4, 4};
@@ -26,6 +26,9 @@ void Game::Update()
     // Update game logic here
     UpdateCamera(&camera, CAMERA_FREE);
     ShowCursor();
+
+    PlayerInput input;
+    player.Update(input, GetFrameTime());
 }
 
 void Game::Draw()
