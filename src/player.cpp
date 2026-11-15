@@ -4,39 +4,46 @@
 
 void Player::Update(const PlayerInput &input, float dt, float groundHeight)
 {
-    // Lag spike
-    dt = std::min(dt, 0.05f); // Clamp dt to avoid large jumps in position
+    const bool wasOnGround = onGround;
+    dt = std::min(dt, kMaxFrameTime); // a lag spike must not launch the player
 
-    // Update yaw and pitch based on mouse input
+    ApplyLook(input);
+    ApplyMovement(input, dt);
+    HandleJump(input, dt);
+    ApplyGravity(input, dt);
+    ResolveGround(groundHeight, dt, wasOnGround);
+}
+
+void Player::ApplyLook(const PlayerInput &input)
+{
     yaw += input.lookYaw * lookSensitivity;
     pitch += input.lookPitch * lookSensitivity;
-    pitch = std::clamp(pitch, -1.5f, 1.5f); // ~85 degrees
+    pitch = std::clamp(pitch, -kMaxPitch, kMaxPitch); // avoid flipping over
+}
 
-    // Clamp pitch to avoid flipping
-    /* if (pitch > 1.5f)
-        pitch = 1.5f; // ~85 degrees
-    if (pitch < -1.5f)
-        pitch = -1.5f; // ~-85 degrees */
+void Player::ApplyMovement(const PlayerInput &input, float dt)
+{
+    const Vec3 forward = {std::sin(yaw), 0.0f, std::cos(yaw)};
+    const Vec3 right = {-std::cos(yaw), 0.0f, std::sin(yaw)};
 
-    // Calculate forward and right vectors based on yaw
-    Vec3 forward = {std::sin(yaw), 0, std::cos(yaw)};
-    Vec3 right = {-std::cos(yaw), 0, std::sin(yaw)};
-
-    // Normalize the movement input
+    // Normalize so diagonal movement isn't faster
     float moveForward = input.moveForward;
     float moveRight = input.moveRight;
-    float length = std::sqrt(moveForward * moveForward + moveRight * moveRight);
+    const float length = std::sqrt(moveForward * moveForward + moveRight * moveRight);
     if (length > 1.0f)
     {
         moveForward /= length;
         moveRight /= length;
     }
 
-    // Update position based on movement input and speed
     position.x += (forward.x * moveForward + right.x * moveRight) * speed * dt;
     position.z += (forward.z * moveForward + right.z * moveRight) * speed * dt;
+}
 
-    // jump buffer and coyote time logic
+void Player::HandleJump(const PlayerInput &input, float dt)
+{
+    // Buffer: a press just before landing still counts.
+    // Coyote: a jump just after leaving a ledge still works.
     jumpBufferTimer = input.jump ? jumpBufferTime : jumpBufferTimer - dt;
     coyoteTimer = onGround ? coyoteTime : coyoteTimer - dt;
 
@@ -47,33 +54,36 @@ void Player::Update(const PlayerInput &input, float dt, float groundHeight)
         jumpBufferTimer = 0.0f;
         coyoteTimer = 0.0f;
     }
+}
 
-    float prevFeetY = position.y - eyeHeight;
-
-    // gravity, faster when falling
+void Player::ApplyGravity(const PlayerInput &input, float dt)
+{
     float g = gravity;
     if (velocityY < 0.0f)
-    {
-        g *= fallMultiplier;
-    }
+        g *= fallMultiplier; // falling is faster than rising
     else if (velocityY > 0.0f && !input.jumpHeld)
-    {
-        g *= lowJumpMultiplier;
-    }
+        g *= lowJumpMultiplier; // released early: shorter hop
 
     velocityY -= g * dt;
     position.y += velocityY * dt;
-    float feetY = position.y - eyeHeight;
+}
 
-    float groundLevel = groundHeight + eyeHeight;
-    if (position.y <= groundLevel)
-    {
-        position.y = groundLevel;
-        velocityY = 0.0f;
-        onGround = true;
-    }
-    else
+void Player::ResolveGround(float groundHeight, float dt, bool wasOnGround)
+{
+    const float groundLevel = groundHeight + eyeHeight;
+
+    if (position.y > groundLevel)
     {
         onGround = false;
+        return;
     }
+
+    // Walking up a small step: glide instead of snapping
+    if (wasOnGround && velocityY <= 0.0f)
+        position.y = std::min(groundLevel, position.y + stepUpSpeed * dt);
+    else
+        position.y = groundLevel; // landing from a jump or fall
+
+    velocityY = 0.0f;
+    onGround = true;
 }

@@ -29,12 +29,28 @@ public:
     bool IsOnGround() const { return onGround; }
     float GetVelocityY() const { return velocityY; }
 
+    float GetFeetY() const { return position.y - eyeHeight; }
+    void setHorizontal(float x, float z)
+    {
+        position.x = x;
+        position.z = z;
+    }
+
 private:
-    Vec3 position = {0.0f, 1.7f, 0.0f}; // starting position
-    float yaw = 0.0f;                   // rotation around Y axis
-    float pitch = 0.0f;                 // rotation around X axis
-    float speed = 5.0f;                 // movement speed in units per second
-    float lookSensitivity = 0.003f;     // mouse sensitivity
+    void ApplyLook(const PlayerInput &input);
+    void ApplyMovement(const PlayerInput &input, float dt);
+    void HandleJump(const PlayerInput &input, float dt);
+    void ApplyGravity(const PlayerInput &input, float dt);
+    void ResolveGround(float groundHeight, float dt, bool wasOnGround);
+
+    static constexpr float kMaxPitch = 1.5f;      // about 85 degrees
+    static constexpr float kMaxFrameTime = 0.05f; // lag spike guard
+
+    Vec3 position = {0.0f, 1.7f, -6.0f}; // start on open ground, in front of the box
+    float yaw = 0.0f;                    // rotation around Y axis
+    float pitch = 0.0f;                  // rotation around X axis
+    float speed = 5.0f;                  // movement speed in units per second
+    float lookSensitivity = 0.003f;      // mouse sensitivity
 
     float velocityY = 0.0f; // vertical velocity for jumping and gravity
     bool onGround = true;   // is the player on the ground
@@ -48,4 +64,6 @@ private:
     float jumpBufferTime = 0.1f;    // a jump pressed this early before landing still counts
     float coyoteTimer = 0.0f;
     float jumpBufferTimer = 0.0f;
+
+    float stepUpSpeed = 8.0f; // speed at which the player steps up onto a box
 };

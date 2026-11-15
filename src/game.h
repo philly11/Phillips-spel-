@@ -6,6 +6,8 @@
 class Game
 {
 public:
+    Game();
+    ~Game();
     void Run();
 
 private:
@@ -13,6 +15,14 @@ private:
     Camera3D camera = {};
     Map map;
 
+    static constexpr float kPlayerRadius = 0.3f;
+
     void Update();
     void Draw();
+
+    PlayerInput ReadInput() const;
+    void ApplyWallCollision(const Vec3 &prev);
+    void UpdateCamera();
+    void DrawMap() const;
+    void DrawDebugText() const;
 };
