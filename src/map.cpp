@@ -1,13 +1,22 @@
 #include "map.h"
 #include <cmath>
 #include <algorithm>
+#include <utility>
 
 Map::Map()
 {
     // Initialize the map with some boxes
-    //                 x     y     z     w     h     d
-    boxes.push_back({0.0f, 0.3f, 0.0f, 2.0f, 1.0f, 2.0f});
-    boxes.push_back({5.0f, 0.3f, 3.0f, 3.0f, 0.5f, 3.0f});
+    //                 x      y     z      w      h     d
+    boxes.push_back({0.0f, 0.0f, 10.25f, 20.5f, 3.0f, 0.5f});  // north wall
+    boxes.push_back({0.0f, 0.0f, -10.25f, 20.5f, 3.0f, 0.5f}); // south wall
+    boxes.push_back({10.25f, 0.0f, 0.0f, 0.5f, 3.0f, 20.0f});  // east wall
+    boxes.push_back({-10.25f, 0.0f, 0.0f, 0.5f, 3.0f, 20.0f}); // west wall
+
+    boxes.push_back({-4.0f, 0.0f, 2.0f, 2.0f, 1.0f, 0.6f}); // cover
+    boxes.push_back({4.0f, 0.0f, -2.0f, 2.0f, 1.0f, 0.6f}); // cover
+    boxes.push_back({0.0f, 0.0f, 5.0f, 1.0f, 2.5f, 1.0f});  // pillar
+    boxes.push_back({6.0f, 0.0f, 6.0f, 4.0f, 1.0f, 4.0f});  // platform
+    boxes.push_back({6.0f, 0.0f, 3.5f, 4.0f, 0.25f, 1.0f}); // step toward the platform
 }
 
 float Map::GetGroundHeight(float x, float z, float feetY) const
@@ -41,4 +50,38 @@ float Map::WallOverlap(float x, float z, float feetY, float radius) const
             worst = std::max(worst, std::min(dx, dz));
     }
     return worst;
+}
+// Clips [tMin, tMax] against one axis slab. Returns false if the ray misses it.
+static bool ClipSlab(float origin, float dir, float lo, float hi, float &tMin, float &tMax)
+{
+    if (std::abs(dir) < 1e-6f)
+        return origin >= lo && origin <= hi; // parallel and outside the slab
+
+    float t1 = (lo - origin) / dir;
+    float t2 = (hi - origin) / dir;
+    if (t1 > t2)
+        std::swap(t1, t2);
+
+    tMin = std::max(tMin, t1);
+    tMax = std::min(tMax, t2);
+    return tMin <= tMax;
+}
+
+float Map::RayCast(const pgame::Ray &ray, float maxDistance) const
+{
+    float nearest = -1.0f;
+    for (const Box &box : boxes)
+    {
+        float tMin = 0.0f;
+        float tMax = maxDistance;
+
+        const bool hit =
+            ClipSlab(ray.origin.x, ray.direction.x, box.x - box.width * 0.5f, box.x + box.width * 0.5f, tMin, tMax) &&
+            ClipSlab(ray.origin.y, ray.direction.y, box.y, box.y + box.height, tMin, tMax) &&
+            ClipSlab(ray.origin.z, ray.direction.z, box.z - box.depth * 0.5f, box.z + box.depth * 0.5f, tMin, tMax);
+
+        if (hit && (nearest < 0.0f || tMin < nearest))
+            nearest = tMin;
+    }
+    return nearest;
 }

@@ -25,4 +25,8 @@ private:
     void UpdateCamera();
     void DrawMap() const;
     void DrawDebugText() const;
+    bool hasHit = false;
+    Vector3 hitPoint = {};
+    void Shoot();
+    void DrawCrossHair() const;
 };

@@ -1,5 +1,6 @@
 #include "game.h"
 #include <cmath>
+#include "map.h"
 
 Game::Game()
 {
@@ -36,6 +37,8 @@ void Game::Update()
 
     ApplyWallCollision(prev);
     UpdateCamera();
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+        Shoot();
 }
 
 PlayerInput Game::ReadInput() const
@@ -87,9 +90,12 @@ void Game::Draw()
 
     BeginMode3D(camera);
     DrawMap();
-    DrawGrid(10, 1.0f);
+    DrawGrid(20, 1.0f);
+    if (hasHit)
+        DrawSphere(hitPoint, 0.1f, YELLOW);
     EndMode3D();
 
+    DrawCrossHair();
     DrawDebugText();
     EndDrawing();
 }
@@ -110,4 +116,23 @@ void Game::DrawDebugText() const
                         player.IsOnGround(), player.GetVelocityY(), player.GetPosition().y),
              10, 10, 20, WHITE);
     DrawText(TextFormat("x: %.2f  z: %.2f", player.GetPosition().x, player.GetPosition().z), 10, 40, 20, WHITE);
+}
+
+void Game::Shoot()
+{
+    const Vec3 origin = player.GetPosition();
+    const Vec3 dir = player.GetLookDirection();
+    const float dist = map.RayCast({origin, dir}, 100.0f);
+
+    hasHit = dist >= 0.0f;
+    if (hasHit)
+        hitPoint = {origin.x + dir.x * dist, origin.y + dir.y * dist, origin.z + dir.z * dist};
+}
+
+void Game::DrawCrossHair() const
+{
+    const int cx = GetScreenWidth() / 2;
+    const int cy = GetScreenHeight() / 2;
+    DrawLine(cx - 10, cy, cx + 10, cy, WHITE);
+    DrawLine(cx, cy - 10, cx, cy + 10, WHITE);
 }
