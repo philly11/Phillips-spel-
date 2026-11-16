@@ -2,6 +2,8 @@
 #include "raylib.h"
 #include "player.h"
 #include "map.h"
+#include <vector>
+#include "target.h"
 
 class Game
 {
@@ -29,4 +31,7 @@ private:
     Vector3 hitPoint = {};
     void Shoot();
     void DrawCrossHair() const;
+    void DrawTargets() const;
+    std::vector<Target> targets;
+    static constexpr int kTargetMaxHealth = 5;
 };

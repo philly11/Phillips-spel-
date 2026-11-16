@@ -1,4 +1,6 @@
 #include "map.h"
+#include "box.h"
+#include "ray_math.h"
 #include <cmath>
 #include <algorithm>
 #include <utility>
@@ -51,21 +53,6 @@ float Map::WallOverlap(float x, float z, float feetY, float radius) const
     }
     return worst;
 }
-// Clips [tMin, tMax] against one axis slab. Returns false if the ray misses it.
-static bool ClipSlab(float origin, float dir, float lo, float hi, float &tMin, float &tMax)
-{
-    if (std::abs(dir) < 1e-6f)
-        return origin >= lo && origin <= hi; // parallel and outside the slab
-
-    float t1 = (lo - origin) / dir;
-    float t2 = (hi - origin) / dir;
-    if (t1 > t2)
-        std::swap(t1, t2);
-
-    tMin = std::max(tMin, t1);
-    tMax = std::min(tMax, t2);
-    return tMin <= tMax;
-}
 
 float Map::RayCast(const pgame::Ray &ray, float maxDistance) const
 {
@@ -76,9 +63,9 @@ float Map::RayCast(const pgame::Ray &ray, float maxDistance) const
         float tMax = maxDistance;
 
         const bool hit =
-            ClipSlab(ray.origin.x, ray.direction.x, box.x - box.width * 0.5f, box.x + box.width * 0.5f, tMin, tMax) &&
-            ClipSlab(ray.origin.y, ray.direction.y, box.y, box.y + box.height, tMin, tMax) &&
-            ClipSlab(ray.origin.z, ray.direction.z, box.z - box.depth * 0.5f, box.z + box.depth * 0.5f, tMin, tMax);
+            pgame::ClipSlab(ray.origin.x, ray.direction.x, box.x - box.width * 0.5f, box.x + box.width * 0.5f, tMin, tMax) &&
+            pgame::ClipSlab(ray.origin.y, ray.direction.y, box.y, box.y + box.height, tMin, tMax) &&
+            pgame::ClipSlab(ray.origin.z, ray.direction.z, box.z - box.depth * 0.5f, box.z + box.depth * 0.5f, tMin, tMax);
 
         if (hit && (nearest < 0.0f || tMin < nearest))
             nearest = tMin;

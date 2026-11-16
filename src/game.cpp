@@ -11,6 +11,10 @@ Game::Game()
     camera.up = {0, 1, 0};
     camera.fovy = 75;
     camera.projection = CAMERA_PERSPECTIVE;
+
+    //                           x     y     z     w     h     d
+    targets.emplace_back(Box{-6.0f, 0.0f, 7.0f, 1.0f, 2.0f, 1.0f}, kTargetMaxHealth);
+    targets.emplace_back(Box{3.0f, 0.0f, -7.0f, 1.0f, 2.0f, 1.0f}, kTargetMaxHealth);
 }
 
 Game::~Game()
@@ -90,6 +94,7 @@ void Game::Draw()
 
     BeginMode3D(camera);
     DrawMap();
+    DrawTargets();
     DrawGrid(20, 1.0f);
     if (hasHit)
         DrawSphere(hitPoint, 0.1f, YELLOW);
@@ -122,11 +127,47 @@ void Game::Shoot()
 {
     const Vec3 origin = player.GetPosition();
     const Vec3 dir = player.GetLookDirection();
-    const float dist = map.RayCast({origin, dir}, 100.0f);
+    const pgame::Ray ray{origin, dir};
+    const float maxDistance = 100.0f;
 
-    hasHit = dist >= 0.0f;
+    // 1. How far is the nearest wall?  (-1 if none)
+    const float wallDist = map.RayCast(ray, maxDistance);
+
+    // 2. Which target is nearest?  Track the index and distance.
+    int nearestIndex = -1;
+    float nearestDist = -1.0f;
+    for (size_t i = 0; i < targets.size(); ++i)
+    {
+        if (!targets[i].IsAlive())
+            continue; // dead targets don't block or take hits
+
+        const float d = targets[i].RayCast(ray, maxDistance);
+        if (d >= 0.0f && (nearestDist < 0.0f || d < nearestDist))
+        {
+            nearestDist = d;
+            nearestIndex = static_cast<int>(i);
+        }
+    }
+
+    // 3. The target only counts if no wall is in front of it
+    const bool targetHit =
+        nearestIndex >= 0 && (wallDist < 0.0f || nearestDist < wallDist);
+
+    if (targetHit)
+        targets[nearestIndex].TakeDamage(1);
+
+    // 4. Marker at whichever thing was hit first
+    float hitDist = -1.0f;
+    if (targetHit)
+        hitDist = nearestDist;
+    else
+        hitDist = wallDist;
+
+    hasHit = hitDist >= 0.0f;
     if (hasHit)
-        hitPoint = {origin.x + dir.x * dist, origin.y + dir.y * dist, origin.z + dir.z * dist};
+        hitPoint = {origin.x + dir.x * hitDist,
+                    origin.y + dir.y * hitDist,
+                    origin.z + dir.z * hitDist};
 }
 
 void Game::DrawCrossHair() const
@@ -135,4 +176,24 @@ void Game::DrawCrossHair() const
     const int cy = GetScreenHeight() / 2;
     DrawLine(cx - 10, cy, cx + 10, cy, WHITE);
     DrawLine(cx, cy - 10, cx, cy + 10, WHITE);
+}
+
+void Game::DrawTargets() const
+{
+    for (const Target &t : targets)
+    {
+        if (!t.IsAlive())
+            continue;
+
+        const Box &b = t.GetHitbox();
+        const Vector3 center = {b.x, b.y + b.height * 0.5f, b.z};
+
+        // Green when healthy, shifting to red as health drops
+        const float ratio = static_cast<float>(t.GetHealth()) / kTargetMaxHealth;
+        const Color color = {static_cast<unsigned char>(255 * (1.0f - ratio)),
+                             static_cast<unsigned char>(255 * ratio), 0, 255};
+
+        DrawCube(center, b.width, b.height, b.depth, color);
+        DrawCubeWires(center, b.width, b.height, b.depth, BLACK);
+    }
 }
