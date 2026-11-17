@@ -4,6 +4,7 @@
 #include "map.h"
 #include <vector>
 #include "target.h"
+#include "weapon.h"
 
 class Game
 {
@@ -16,6 +17,7 @@ private:
     Player player;
     Camera3D camera = {};
     Map map;
+    Weapon weapon;
 
     static constexpr float kPlayerRadius = 0.3f;
 

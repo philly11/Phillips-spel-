@@ -72,3 +72,17 @@ float Map::RayCast(const pgame::Ray &ray, float maxDistance) const
     }
     return nearest;
 }
+
+Vec3 Map::ResolveMove(const Vec3 &prev, const Vec3 &now, float feetY, float radius) const
+{
+    float x = now.x;
+    float z = now.z;
+
+    // A move is blocked only if it pushes deeper into a wall than before
+    if (WallOverlap(x, prev.z, feetY, radius) > WallOverlap(prev.x, prev.z, feetY, radius))
+        x = prev.x;
+    if (WallOverlap(x, z, feetY, radius) > WallOverlap(x, prev.z, feetY, radius))
+        z = prev.z;
+
+    return {x, now.y, z};
+}

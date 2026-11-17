@@ -16,6 +16,8 @@ public:
     float RayCast(const pgame::Ray &ray, float maxDistance) const;
     const std::vector<Box> &GetBoxes() const { return boxes; }
     static constexpr float kStepHeight = 0.3f; // Maximum height the player can step up
+    // Returns the position after sliding along walls. y is passed through unchanged.
+    Vec3 ResolveMove(const Vec3 &prev, const Vec3 &now, float feetY, float radius) const;
 
 private:
     std::vector<Box> boxes;

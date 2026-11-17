@@ -1,6 +1,7 @@
 #include "game.h"
 #include <cmath>
 #include "map.h"
+#include "combat.h"
 
 Game::Game()
 {
@@ -15,6 +16,7 @@ Game::Game()
     //                           x     y     z     w     h     d
     targets.emplace_back(Box{-6.0f, 0.0f, 7.0f, 1.0f, 2.0f, 1.0f}, kTargetMaxHealth);
     targets.emplace_back(Box{3.0f, 0.0f, -7.0f, 1.0f, 2.0f, 1.0f}, kTargetMaxHealth);
+    targets.emplace_back(Box{8.0f, 0.0f, -8.0f, 1.0f, 2.0f, 1.0f}, kTargetMaxHealth, 2.5f);
 }
 
 Game::~Game()
@@ -39,9 +41,19 @@ void Game::Update()
     const float ground = map.GetGroundHeight(prev.x, prev.z, player.GetFeetY());
     player.Update(input, GetFrameTime(), ground);
 
+    const float dt = GetFrameTime();
+    for (Target &t : targets)
+        t.Update(dt, player.GetPosition(), map);
+
     ApplyWallCollision(prev);
     UpdateCamera();
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+
+    weapon.Update(GetFrameTime());
+
+    if (IsKeyPressed(KEY_R))
+        weapon.StartReload();
+
+    if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && weapon.TryFire())
         Shoot();
 }
 
@@ -62,20 +74,8 @@ PlayerInput Game::ReadInput() const
 // Undo movement per axis, so the player slides along walls instead of sticking
 void Game::ApplyWallCollision(const Vec3 &prev)
 {
-    const Vec3 now = player.GetPosition();
-    const float feetY = player.GetFeetY();
-    float x = now.x;
-    float z = now.z;
-
-    // A move is blocked only if it pushes deeper into a wall than before
-    if (map.WallOverlap(x, prev.z, feetY, kPlayerRadius) >
-        map.WallOverlap(prev.x, prev.z, feetY, kPlayerRadius))
-        x = prev.x;
-    if (map.WallOverlap(x, z, feetY, kPlayerRadius) >
-        map.WallOverlap(x, prev.z, feetY, kPlayerRadius))
-        z = prev.z;
-
-    player.setHorizontal(x, z);
+    const Vec3 r = map.ResolveMove(prev, player.GetPosition(), player.GetFeetY(), kPlayerRadius);
+    player.setHorizontal(r.x, r.z);
 }
 
 void Game::UpdateCamera()
@@ -121,53 +121,28 @@ void Game::DrawDebugText() const
                         player.IsOnGround(), player.GetVelocityY(), player.GetPosition().y),
              10, 10, 20, WHITE);
     DrawText(TextFormat("x: %.2f  z: %.2f", player.GetPosition().x, player.GetPosition().z), 10, 40, 20, WHITE);
+
+    const char *text = weapon.IsReloading()
+                           ? "Reloading..."
+                           : TextFormat("%d / %d", weapon.GetAmmoInMagazine(), weapon.GetReserveAmmo());
+    DrawText(text, GetScreenWidth() - 200, GetScreenHeight() - 50, 30, WHITE);
 }
 
 void Game::Shoot()
 {
     const Vec3 origin = player.GetPosition();
     const Vec3 dir = player.GetLookDirection();
-    const pgame::Ray ray{origin, dir};
-    const float maxDistance = 100.0f;
+    const pgame::ShotResult shot =
+        pgame::ResolveShot({origin, dir}, map, targets, 100.0f);
 
-    // 1. How far is the nearest wall?  (-1 if none)
-    const float wallDist = map.RayCast(ray, maxDistance);
+    if (shot.kind == pgame::ShotResult::Kind::Target)
+        targets[shot.targetIndex].TakeDamage(weapon.GetDamage());
 
-    // 2. Which target is nearest?  Track the index and distance.
-    int nearestIndex = -1;
-    float nearestDist = -1.0f;
-    for (size_t i = 0; i < targets.size(); ++i)
-    {
-        if (!targets[i].IsAlive())
-            continue; // dead targets don't block or take hits
-
-        const float d = targets[i].RayCast(ray, maxDistance);
-        if (d >= 0.0f && (nearestDist < 0.0f || d < nearestDist))
-        {
-            nearestDist = d;
-            nearestIndex = static_cast<int>(i);
-        }
-    }
-
-    // 3. The target only counts if no wall is in front of it
-    const bool targetHit =
-        nearestIndex >= 0 && (wallDist < 0.0f || nearestDist < wallDist);
-
-    if (targetHit)
-        targets[nearestIndex].TakeDamage(1);
-
-    // 4. Marker at whichever thing was hit first
-    float hitDist = -1.0f;
-    if (targetHit)
-        hitDist = nearestDist;
-    else
-        hitDist = wallDist;
-
-    hasHit = hitDist >= 0.0f;
+    hasHit = shot.kind != pgame::ShotResult::Kind::None;
     if (hasHit)
-        hitPoint = {origin.x + dir.x * hitDist,
-                    origin.y + dir.y * hitDist,
-                    origin.z + dir.z * hitDist};
+        hitPoint = {origin.x + dir.x * shot.distance,
+                    origin.y + dir.y * shot.distance,
+                    origin.z + dir.z * shot.distance};
 }
 
 void Game::DrawCrossHair() const

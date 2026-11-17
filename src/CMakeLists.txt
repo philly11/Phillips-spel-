@@ -5,7 +5,9 @@ add_library(game_core STATIC
     player.cpp
     map.cpp
     target.cpp
-
+    combat.cpp
+    weapon.cpp
+    spread.cpp
 )
 
 target_include_directories(game_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
