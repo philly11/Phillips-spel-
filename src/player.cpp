@@ -92,3 +92,22 @@ Vec3 Player::GetLookDirection() const
 {
     return {std::sin(yaw) * std::cos(pitch), -std::sin(pitch), std::cos(yaw) * std::cos(pitch)};
 }
+
+void Player::TakeDamage(int amount)
+{
+    if (amount <= 0)
+    {
+        return;
+    }
+    health = std::max(0, health - amount);
+}
+
+bool Player::IsAlive() const
+{
+    return health > 0;
+}
+
+int Player::GetHealth() const
+{
+    return health;
+}

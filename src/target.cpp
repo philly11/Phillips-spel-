@@ -2,6 +2,7 @@
 #include "ray_math.h"
 #include "map.h"
 #include <cmath>
+#include <algorithm>
 
 float Target::RayCast(const pgame::Ray &ray, float maxDistance) const
 {
@@ -26,4 +27,30 @@ void Target::Update(float dt, const Vec3 &goal, const Map &map)
     const Vec3 r = map.ResolveMove(prev, next, hitbox.y, radius);
     hitbox.x = r.x;
     hitbox.z = r.z;
+}
+
+bool Target::TryAttack(float dt, const Vec3 &targetPosition)
+{
+    if (!IsAlive())
+    {
+        return false;
+    }
+
+    if (attackTimer > 0.0f)
+    {
+        attackTimer -= dt;
+    }
+
+    const float dx = targetPosition.x - hitbox.x;
+    const float dz = targetPosition.z - hitbox.z;
+    const float distanceSquared = dx * dx + dz * dz;
+    const bool inRange = distanceSquared <= kAttackRange * kAttackRange;
+
+    if (!inRange || attackTimer > 0.0f)
+    {
+        return false;
+    }
+
+    attackTimer = kAttackInterval;
+    return true;
 }

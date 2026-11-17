@@ -15,7 +15,7 @@ class Player
 public:
     void Update(const PlayerInput &input, float dt, float groundHeight);
 
-        const Vec3 &GetPosition() const { return position; }
+    const Vec3 &GetPosition() const { return position; }
     float GetYaw() const { return yaw; }
     float GetPitch() const { return pitch; }
 
@@ -30,6 +30,11 @@ public:
         position.x = x;
         position.z = z;
     }
+
+    static constexpr int kMaxHealth = 100;
+    void TakeDamage(int amount); // never goes below 0
+    bool IsAlive() const;
+    int GetHealth() const;
 
 private:
     void ApplyLook(const PlayerInput &input);
@@ -61,4 +66,5 @@ private:
     float jumpBufferTimer = 0.0f;
 
     float stepUpSpeed = 8.0f; // speed at which the player steps up onto a box
+    int health = kMaxHealth;  // put it last in the member list (-Wreorder)
 };

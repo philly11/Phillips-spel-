@@ -10,6 +10,8 @@ add_executable(tests
     test_main.cpp
     test_player.cpp
     test_map.cpp
+    
 )
+target_compile_options(tests PRIVATE -Wall -Wextra)
 target_link_libraries(tests PRIVATE game_core doctest::doctest)
 add_test(NAME unit_tests COMMAND tests)

@@ -13,10 +13,25 @@ Game::Game()
     camera.fovy = 75;
     camera.projection = CAMERA_PERSPECTIVE;
 
+    SpawnTargets();
+}
+
+void Game::SpawnTargets()
+{
+    targets.clear();
     //                           x     y     z     w     h     d
     targets.emplace_back(Box{-6.0f, 0.0f, 7.0f, 1.0f, 2.0f, 1.0f}, kTargetMaxHealth);
     targets.emplace_back(Box{3.0f, 0.0f, -7.0f, 1.0f, 2.0f, 1.0f}, kTargetMaxHealth);
     targets.emplace_back(Box{8.0f, 0.0f, -8.0f, 1.0f, 2.0f, 1.0f}, kTargetMaxHealth, 2.5f);
+}
+
+void Game::Restart()
+{
+    player = Player{};
+    weapon = Weapon{};
+    hasHit = false;
+    SpawnTargets();
+    state = GameState::Playing;
 }
 
 Game::~Game()
@@ -35,26 +50,54 @@ void Game::Run()
 
 void Game::Update()
 {
+    const float dt = GetFrameTime();
+
+    switch (state)
+    {
+    case GameState::Playing:
+        UpdatePlaying(dt);
+        break;
+    case GameState::Dead:
+        if (IsKeyPressed(KEY_ENTER))
+            Restart();
+        break;
+    }
+}
+
+void Game::UpdatePlaying(float dt)
+{
     const PlayerInput input = ReadInput();
 
     const Vec3 prev = player.GetPosition(); // copy, so we can undo a move
     const float ground = map.GetGroundHeight(prev.x, prev.z, player.GetFeetY());
-    player.Update(input, GetFrameTime(), ground);
-
-    const float dt = GetFrameTime();
-    for (Target &t : targets)
-        t.Update(dt, player.GetPosition(), map);
-
+    player.Update(input, dt, ground);
     ApplyWallCollision(prev);
     UpdateCamera();
 
-    weapon.Update(GetFrameTime());
+    for (Target &target : targets)
+    {
+        target.Update(dt, player.GetPosition(), map);
+
+        if (player.IsAlive() && target.TryAttack(dt, player.GetPosition()))
+            player.TakeDamage(Target::kAttackDamage);
+    }
+
+    weapon.Update(dt);
 
     if (IsKeyPressed(KEY_R))
         weapon.StartReload();
 
-    if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && weapon.TryFire())
-        Shoot();
+    if (IsMouseButtonDown(MOUSE_BUTTON_LEFT))
+    {
+        const bool fired = weapon.TryFire();
+        TraceLog(LOG_INFO, "fired=%d mag=%d reserve=%d reloading=%d",
+                 fired, weapon.GetAmmoInMagazine(), weapon.GetReserveAmmo(), weapon.IsReloading());
+        if (fired)
+            Shoot();
+    }
+
+    if (!player.IsAlive())
+        state = GameState::Dead;
 }
 
 PlayerInput Game::ReadInput() const
@@ -100,9 +143,26 @@ void Game::Draw()
         DrawSphere(hitPoint, 0.1f, YELLOW);
     EndMode3D();
 
+    DrawText(TextFormat("HP %d", player.GetHealth()), 20, GetScreenHeight() - 80, 30, RED);
     DrawCrossHair();
     DrawDebugText();
+
+    if (state == GameState::Dead)
+        DrawDeathScreen();
+
     EndDrawing();
+}
+
+void Game::DrawDeathScreen() const
+{
+    const int w = GetScreenWidth();
+    const int h = GetScreenHeight();
+    DrawRectangle(0, 0, w, h, Fade(BLACK, 0.6f));
+
+    const char *title = "YOU DIED";
+    const char *hint = "Press ENTER to restart";
+    DrawText(title, (w - MeasureText(title, 80)) / 2, h / 2 - 60, 80, RED);
+    DrawText(hint, (w - MeasureText(hint, 30)) / 2, h / 2 + 40, 30, WHITE);
 }
 
 void Game::DrawMap() const
@@ -143,6 +203,8 @@ void Game::Shoot()
         hitPoint = {origin.x + dir.x * shot.distance,
                     origin.y + dir.y * shot.distance,
                     origin.z + dir.z * shot.distance};
+
+    TraceLog(LOG_INFO, "shot kind=%d dist=%.2f", static_cast<int>(shot.kind), shot.distance);
 }
 
 void Game::DrawCrossHair() const
