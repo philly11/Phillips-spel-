@@ -2,16 +2,40 @@
 #include <algorithm>
 #include <cmath>
 
+namespace
+{
+    // Moves value toward 0 by amount, without overshooting
+    float MoveTowardZero(float value, float amount)
+    {
+        if (value > 0.0f)
+            return std::max(0.0f, value - amount);
+        return std::min(0.0f, value + amount);
+    }
+} // namespace
+
 void Player::Update(const PlayerInput &input, float dt, float groundHeight)
 {
     const bool wasOnGround = onGround;
     dt = std::min(dt, kMaxFrameTime); // a lag spike must not launch the player
 
     ApplyLook(input);
+    RecoverRecoil(dt);
     ApplyMovement(input, dt);
     HandleJump(input, dt);
     ApplyGravity(input, dt);
     ResolveGround(groundHeight, dt, wasOnGround);
+}
+
+void Player::RecoverRecoil(float dt)
+{
+    recoilPitch = MoveTowardZero(recoilPitch, recoilRecovery * dt);
+    recoilYaw = MoveTowardZero(recoilYaw, recoilRecovery * dt);
+}
+
+void Player::AddRecoil(float up, float sideways)
+{
+    recoilPitch -= up; // pitch is positive downward, so up is negative
+    recoilYaw += sideways;
 }
 
 void Player::ApplyLook(const PlayerInput &input)
@@ -90,7 +114,9 @@ void Player::ResolveGround(float groundHeight, float dt, bool wasOnGround)
 
 Vec3 Player::GetLookDirection() const
 {
-    return {std::sin(yaw) * std::cos(pitch), -std::sin(pitch), std::cos(yaw) * std::cos(pitch)};
+    const float p = std::clamp(pitch + recoilPitch, -kMaxPitch, kMaxPitch);
+    const float y = yaw + recoilYaw;
+    return {std::sin(y) * std::cos(p), -std::sin(p), std::cos(y) * std::cos(p)};
 }
 
 void Player::TakeDamage(int amount)

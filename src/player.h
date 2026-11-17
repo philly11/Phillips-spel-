@@ -1,5 +1,6 @@
 #pragma once
 #include "vec3.h"
+
 struct PlayerInput
 {
     float moveForward = 0.0f; // -1 to 1
@@ -19,7 +20,7 @@ public:
     float GetYaw() const { return yaw; }
     float GetPitch() const { return pitch; }
 
-    Vec3 GetLookDirection() const;
+    Vec3 GetLookDirection() const; // includes recoil
 
     bool IsOnGround() const { return onGround; }
     float GetVelocityY() const { return velocityY; }
@@ -36,8 +37,12 @@ public:
     bool IsAlive() const;
     int GetHealth() const;
 
+    // up: radians the view kicks upward. sideways: radians, either sign.
+    void AddRecoil(float up, float sideways);
+
 private:
     void ApplyLook(const PlayerInput &input);
+    void RecoverRecoil(float dt);
     void ApplyMovement(const PlayerInput &input, float dt);
     void HandleJump(const PlayerInput &input, float dt);
     void ApplyGravity(const PlayerInput &input, float dt);
@@ -48,7 +53,7 @@ private:
 
     Vec3 position = {0.0f, 1.7f, -6.0f}; // start on open ground, in front of the box
     float yaw = 0.0f;                    // rotation around Y axis
-    float pitch = 0.0f;                  // rotation around X axis
+    float pitch = 0.0f;                  // rotation around X axis, positive = down
     float speed = 5.0f;                  // movement speed in units per second
     float lookSensitivity = 0.003f;      // mouse sensitivity
 
@@ -66,5 +71,10 @@ private:
     float jumpBufferTimer = 0.0f;
 
     float stepUpSpeed = 8.0f; // speed at which the player steps up onto a box
-    int health = kMaxHealth;  // put it last in the member list (-Wreorder)
+
+    float recoilPitch = 0.0f;     // offset on top of pitch, negative = up
+    float recoilYaw = 0.0f;       // offset on top of yaw
+    float recoilRecovery = 0.08f; // radians per second back toward 0
+
+    int health = kMaxHealth;
 };

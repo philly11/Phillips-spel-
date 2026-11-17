@@ -1,8 +1,10 @@
 #pragma once
-#include "raylib.h"
-#include "player.h"
-#include "map.h"
+#include <random>
 #include <vector>
+
+#include "map.h"
+#include "player.h"
+#include "raylib.h"
 #include "target.h"
 #include "weapon.h"
 
@@ -48,4 +50,5 @@ private:
     std::vector<Target> targets;
     bool hasHit = false;
     Vector3 hitPoint = {};
+    std::mt19937 rng{std::random_device{}()}; // seeded once from the OS
 };

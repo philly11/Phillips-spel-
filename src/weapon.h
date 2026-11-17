@@ -10,7 +10,9 @@ struct WeaponConfig
     float baseSpread = 0.005f;   // radians, standing still
     float spreadPerShot = 0.01f; // added by each shot
     float maxSpread = 0.06f;
-    float spreadRecovery = 0.1f; // radians per second
+    float spreadRecovery = 0.1f;   // radians per second
+    float recoilKick = 0.02f;      // radians the view kicks up per shot
+    float recoilSideways = 0.005f; // max random sideways kick, radians
 };
 
 class Weapon
@@ -27,6 +29,9 @@ public:
     int GetDamage() const { return config.damage; }
     bool IsReloading() const { return reloading; }
     float GetShotSpread() const { return shotSpread; }
+    float GetCurrentSpread() const { return currentSpread; }
+    float GetRecoilKick() const { return config.recoilKick; }
+    float GetRecoilSideways() const { return config.recoilSideways; }
 
 private:
     void FinishReload();
@@ -37,6 +42,6 @@ private:
     float cooldown = 0.0f;
     float reloadTimer = 0.0f;
     bool reloading = false;
-    float currentSpread; // initialise to config.baseSpread
+    float currentSpread;
     float shotSpread = 0.0f;
 };

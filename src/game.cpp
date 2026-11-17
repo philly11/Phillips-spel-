@@ -2,6 +2,7 @@
 #include <cmath>
 #include "map.h"
 #include "combat.h"
+#include "spread.h"
 
 Game::Game()
 {
@@ -72,7 +73,6 @@ void Game::UpdatePlaying(float dt)
     const float ground = map.GetGroundHeight(prev.x, prev.z, player.GetFeetY());
     player.Update(input, dt, ground);
     ApplyWallCollision(prev);
-    UpdateCamera();
 
     for (Target &target : targets)
     {
@@ -87,17 +87,13 @@ void Game::UpdatePlaying(float dt)
     if (IsKeyPressed(KEY_R))
         weapon.StartReload();
 
-    if (IsMouseButtonDown(MOUSE_BUTTON_LEFT))
-    {
-        const bool fired = weapon.TryFire();
-        TraceLog(LOG_INFO, "fired=%d mag=%d reserve=%d reloading=%d",
-                 fired, weapon.GetAmmoInMagazine(), weapon.GetReserveAmmo(), weapon.IsReloading());
-        if (fired)
-            Shoot();
-    }
+    if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && weapon.TryFire())
+        Shoot();
 
     if (!player.IsAlive())
         state = GameState::Dead;
+
+    UpdateCamera(); // last, so the camera shows this frame's final state (incl. recoil)
 }
 
 PlayerInput Game::ReadInput() const
@@ -190,10 +186,14 @@ void Game::DrawDebugText() const
 
 void Game::Shoot()
 {
+    std::uniform_real_distribution<float> unit(0.0f, 1.0f);
+    std::uniform_real_distribution<float> side(-1.0f, 1.0f);
+
     const Vec3 origin = player.GetPosition();
-    const Vec3 dir = player.GetLookDirection();
-    const pgame::ShotResult shot =
-        pgame::ResolveShot({origin, dir}, map, targets, 100.0f);
+    const Vec3 aim = player.GetLookDirection();
+    const Vec3 dir = pgame::ApplySpread(aim, weapon.GetShotSpread(), unit(rng), unit(rng));
+
+    const pgame::ShotResult shot = pgame::ResolveShot({origin, dir}, map, targets, 100.0f);
 
     if (shot.kind == pgame::ShotResult::Kind::Target)
         targets[shot.targetIndex].TakeDamage(weapon.GetDamage());
@@ -204,7 +204,8 @@ void Game::Shoot()
                     origin.y + dir.y * shot.distance,
                     origin.z + dir.z * shot.distance};
 
-    TraceLog(LOG_INFO, "shot kind=%d dist=%.2f", static_cast<int>(shot.kind), shot.distance);
+    // Kick after the bullet has left: this shot used the aim from before the kick
+    player.AddRecoil(weapon.GetRecoilKick(), side(rng) * weapon.GetRecoilSideways());
 }
 
 void Game::DrawCrossHair() const

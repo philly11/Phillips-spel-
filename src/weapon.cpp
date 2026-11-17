@@ -2,7 +2,10 @@
 #include <algorithm>
 
 Weapon::Weapon(const WeaponConfig &cfg)
-    : config(cfg), ammoInMagazine(cfg.magazineSize), reserveAmmo(cfg.reserveAmmo)
+    : config(cfg),
+      ammoInMagazine(cfg.magazineSize),
+      reserveAmmo(cfg.reserveAmmo),
+      currentSpread(cfg.baseSpread)
 {
 }
 
@@ -34,7 +37,6 @@ bool Weapon::TryFire()
 
     --ammoInMagazine;
     cooldown = config.fireInterval;
-    return true;
 
     shotSpread = currentSpread; // this shot uses the spread from BEFORE this bullet
     currentSpread = std::min(config.maxSpread, currentSpread + config.spreadPerShot);
