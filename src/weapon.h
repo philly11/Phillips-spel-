@@ -32,7 +32,7 @@ public:
     float GetCurrentSpread() const { return currentSpread; }
     float GetRecoilKick() const { return config.recoilKick; }
     float GetRecoilSideways() const { return config.recoilSideways; }
-
+    void SetBloomMultiplier(float m) { bloomMultiplier = m; } // set by abilities, 1 = normal
 private:
     void FinishReload();
 
@@ -44,4 +44,5 @@ private:
     bool reloading = false;
     float currentSpread;
     float shotSpread = 0.0f;
+    float bloomMultiplier = 1.0f;
 };

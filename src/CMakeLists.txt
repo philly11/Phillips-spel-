@@ -1,10 +1,12 @@
 add_library(game_core STATIC
+    ability.cpp
     player.cpp
     map.cpp
     target.cpp
     combat.cpp
     weapon.cpp
     spread.cpp
+    pickup.cpp
 )
 target_include_directories(game_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(game_core PRIVATE -Wall -Wextra)  # /W4 on MSVC

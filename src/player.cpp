@@ -1,16 +1,17 @@
 #include "player.h"
+
 #include <algorithm>
 #include <cmath>
 
 namespace
 {
-    // Moves value toward 0 by amount, without overshooting
-    float MoveTowardZero(float value, float amount)
-    {
-        if (value > 0.0f)
-            return std::max(0.0f, value - amount);
-        return std::min(0.0f, value + amount);
-    }
+// Moves value toward 0 by amount, without overshooting
+float MoveTowardZero(float value, float amount)
+{
+    if (value > 0.0f)
+        return std::max(0.0f, value - amount);
+    return std::min(0.0f, value + amount);
+}
 } // namespace
 
 void Player::Update(const PlayerInput &input, float dt, float groundHeight)
@@ -60,8 +61,18 @@ void Player::ApplyMovement(const PlayerInput &input, float dt)
         moveRight /= length;
     }
 
-    position.x += (forward.x * moveForward + right.x * moveRight) * speed * dt;
-    position.z += (forward.z * moveForward + right.z * moveRight) * speed * dt;
+    const float moveSpeed = speed * speedMultiplier;
+    position.x += (forward.x * moveForward + right.x * moveRight) * moveSpeed * dt;
+    position.z += (forward.z * moveForward + right.z * moveRight) * moveSpeed * dt;
+}
+
+void Player::SetEyeHeightMultiplier(float m)
+{
+    // Move the eyes, not the feet. Otherwise growing would sink the feet
+    // into the floor and the ground/wall checks would use the wrong height.
+    const float newEyeHeight = kBaseEyeHeight * m;
+    position.y += newEyeHeight - eyeHeight;
+    eyeHeight = newEyeHeight;
 }
 
 void Player::HandleJump(const PlayerInput &input, float dt)
