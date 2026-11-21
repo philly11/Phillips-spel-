@@ -23,6 +23,7 @@ public:
     void Update(float dt);
     bool TryFire();     // true if a shot was actually fired
     void StartReload(); // ignored if pointless or already reloading
+    void RefillAmmo();  // full magazine + full reserve, cancels a reload
 
     int GetAmmoInMagazine() const { return ammoInMagazine; }
     int GetReserveAmmo() const { return reserveAmmo; }

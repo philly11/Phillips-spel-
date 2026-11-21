@@ -7,6 +7,7 @@ add_library(game_core STATIC
     weapon.cpp
     spread.cpp
     pickup.cpp
+    wave.cpp
 )
 target_include_directories(game_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(game_core PRIVATE -Wall -Wextra)  # /W4 on MSVC

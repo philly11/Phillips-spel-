@@ -60,3 +60,11 @@ void Weapon::FinishReload()
     reserveAmmo -= taken;
     reloading = false;
 }
+
+void Weapon::RefillAmmo()
+{
+    ammoInMagazine = config.magazineSize;
+    reserveAmmo = config.reserveAmmo;
+    reloading = false;
+    reloadTimer = 0.0f;
+}

@@ -1,11 +1,21 @@
 #include "game.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 
 #include "combat.h"
 #include "map.h"
 #include "spread.h"
+
+namespace
+{
+// Where enemies can appear. Kept clear of boxes; PickSpawnPoint avoids ones near the player.
+const std::vector<Vec3> kSpawnPoints = {
+    {-8.0f, 0.0f, -8.0f}, {0.0f, 0.0f, -8.5f}, {8.0f, 0.0f, -8.0f}, {-8.5f, 0.0f, 0.0f},
+    {8.5f, 0.0f, 0.0f},   {-8.0f, 0.0f, 8.0f}, {0.0f, 0.0f, 8.5f},  {2.5f, 0.0f, 8.5f},
+};
+} // namespace
 
 Game::Game()
 {
@@ -17,17 +27,37 @@ Game::Game()
     camera.fovy = 75;
     camera.projection = CAMERA_PERSPECTIVE;
 
-    SpawnTargets();
-    SpawnPickups();
+    SpawnPickups(); // no enemies yet: the first wave starts after a short break
 }
 
-void Game::SpawnTargets()
+// WaveDirector decided WHEN; this decides WHERE and WHAT
+void Game::SpawnEnemy()
 {
-    targets.clear();
-    //                           x     y     z     w     h     d
-    targets.emplace_back(Box{-6.0f, 0.0f, 7.0f, 1.0f, 2.0f, 1.0f}, kTargetMaxHealth);
-    targets.emplace_back(Box{3.0f, 0.0f, -7.0f, 1.0f, 2.0f, 1.0f}, kTargetMaxHealth);
-    targets.emplace_back(Box{8.0f, 0.0f, -8.0f, 1.0f, 2.0f, 1.0f}, kTargetMaxHealth, 2.5f);
+    const pgame::WaveStats stats = waves.GetStats();
+    std::uniform_real_distribution<float> unit(0.0f, 1.0f);
+    const Vec3 p =
+        pgame::PickSpawnPoint(kSpawnPoints, player.GetPosition(), kMinSpawnDistance, unit(rng));
+
+    //                x    y     z    w     h     d
+    const Box hitbox{p.x, 0.0f, p.z, 1.0f, 2.0f, 1.0f};
+    targets.emplace_back(hitbox, stats.enemyHealth, stats.enemySpeed,
+                         RollEnemyAbility(stats.abilityChance));
+}
+
+// Randomness stays in Game: Target just receives the result
+std::optional<pgame::AbilityType> Game::RollEnemyAbility(float chance)
+{
+    using pgame::AbilityType;
+    // Inverted controls means nothing for an AI
+    static constexpr std::array<AbilityType, 4> kEnemyAbilities = {
+        AbilityType::Camo, AbilityType::SuperSpeed, AbilityType::Blink, AbilityType::Giant};
+
+    std::bernoulli_distribution hasAbility(chance);
+    if (!hasAbility(rng))
+        return std::nullopt;
+
+    std::uniform_int_distribution<std::size_t> pick(0, kEnemyAbilities.size() - 1);
+    return kEnemyAbilities[pick(rng)];
 }
 
 void Game::SpawnPickups()
@@ -49,7 +79,8 @@ void Game::Restart()
     stillTimer = 0.0f;
     hidden = false;
     popupTimer = 0.0f;
-    SpawnTargets();
+    targets.clear();
+    waves = pgame::WaveDirector{};
     SpawnPickups();
     state = GameState::Playing;
 }
@@ -123,12 +154,33 @@ void Game::UpdatePlaying(float dt)
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && weapon.TryFire())
         Shoot();
 
+    RemoveDeadTargets(); // after Shoot, so a kill this frame still drops its ability
+    UpdateWaves(dt);
+
     popupTimer = std::max(0.0f, popupTimer - dt);
 
     if (!player.IsAlive())
         state = GameState::Dead;
 
     UpdateCamera(); // last, so the camera shows this frame's final state (incl. recoil)
+}
+
+void Game::RemoveDeadTargets()
+{
+    targets.erase(std::remove_if(targets.begin(), targets.end(),
+                                 [](const Target &t) { return !t.IsAlive(); }),
+                  targets.end());
+}
+
+void Game::UpdateWaves(float dt)
+{
+    const int waveBefore = waves.GetWave();
+
+    if (waves.Update(dt, static_cast<int>(targets.size())))
+        SpawnEnemy();
+
+    if (waves.GetWave() != waveBefore)
+        weapon.RefillAmmo(); // new wave, full ammo: otherwise later waves can't be won
 }
 
 // Decide (AbilitySlots) vs apply (here): each value goes to the object that owns it
@@ -151,11 +203,18 @@ void Game::UpdatePickups(float dt)
         if (!pickup.TryCollect(feet))
             continue;
 
-        const auto type = static_cast<pgame::AbilityType>(roll(rng));
+        // Drops give the dead enemy's ability, floor spots roll a mystery one
+        const pgame::AbilityType type =
+            pickup.IsDrop() ? *pickup.GetFixedType() : static_cast<pgame::AbilityType>(roll(rng));
         popupResult = abilities.Add(type);
         popupType = type;
         popupTimer = kPopupDuration;
     }
+
+    // Remove collected drops AFTER the loop: erasing inside a range-for breaks the loop
+    pickups.erase(std::remove_if(pickups.begin(), pickups.end(),
+                                 [](const pgame::Pickup &p) { return p.IsUsedUp(); }),
+                  pickups.end());
 }
 
 // Standing still for a moment hides you. Moving or jumping breaks it (shooting: see Shoot)
@@ -176,10 +235,9 @@ void Game::UpdateTargets(float dt)
         target.Update(dt, goal, map);
 
         if (!hidden && player.IsAlive() && target.TryAttack(dt, player.GetPosition()))
-            player.TakeDamage(Target::kAttackDamage);
+            player.TakeDamage(target.GetAttackDamage());
     }
 }
-
 // Short horizontal teleport the way you face. Stops before walls.
 void Game::Blink()
 {
@@ -266,6 +324,23 @@ void Game::DrawHud() const
 
     DrawAbilities();
     DrawPickupPopup();
+    DrawWaveInfo();
+}
+
+void Game::DrawWaveInfo() const
+{
+    const int w = GetScreenWidth();
+
+    if (waves.IsOnBreak())
+    {
+        const int secondsLeft = static_cast<int>(std::ceil(waves.GetBreakTimeLeft()));
+        const char *text = TextFormat("WAVE %d IN %d", waves.GetWave() + 1, secondsLeft);
+        DrawText(text, (w - MeasureText(text, 50)) / 2, 80, 50, WHITE);
+        return;
+    }
+
+    const char *text = TextFormat("WAVE %d", waves.GetWave());
+    DrawText(text, (w - MeasureText(text, 30)) / 2, 20, 30, WHITE);
 }
 
 void Game::DrawAbilities() const
@@ -315,10 +390,14 @@ void Game::DrawPickups() const
         if (!p.IsAvailable())
             continue;
 
+        // Drops look different from floor spots, but don't reveal WHICH ability
+        const Color fill = p.IsDrop() ? SKYBLUE : GOLD;
+        const Color edge = p.IsDrop() ? BLUE : ORANGE;
+
         const Vec3 &pos = p.GetPosition();
         const Vector3 center = {pos.x, pos.y + 0.5f + bob, pos.z};
-        DrawCube(center, 0.4f, 0.4f, 0.4f, GOLD);
-        DrawCubeWires(center, 0.4f, 0.4f, 0.4f, ORANGE);
+        DrawCube(center, 0.4f, 0.4f, 0.4f, fill);
+        DrawCubeWires(center, 0.4f, 0.4f, 0.4f, edge);
     }
 }
 
@@ -332,6 +411,9 @@ void Game::DrawDeathScreen() const
     const char *hint = "Press ENTER to restart";
     DrawText(title, (w - MeasureText(title, 80)) / 2, h / 2 - 60, 80, RED);
     DrawText(hint, (w - MeasureText(hint, 30)) / 2, h / 2 + 40, 30, WHITE);
+
+    const char *reached = TextFormat("You reached wave %d", waves.GetWave());
+    DrawText(reached, (w - MeasureText(reached, 30)) / 2, h / 2 + 90, 30, WHITE);
 }
 
 void Game::DrawMap() const
@@ -369,7 +451,17 @@ void Game::Shoot()
     const pgame::ShotResult shot = pgame::ResolveShot({origin, dir}, map, targets, 100.0f);
 
     if (shot.kind == pgame::ShotResult::Kind::Target)
-        targets[shot.targetIndex].TakeDamage(weapon.GetDamage());
+    {
+        Target &target = targets[shot.targetIndex];
+        target.TakeDamage(weapon.GetDamage());
+
+        // ResolveShot only hits living targets, so dead now = this shot killed it
+        if (!target.IsAlive() && target.GetAbility())
+        {
+            const Box &b = target.GetHitbox();
+            pickups.emplace_back(Vec3{b.x, b.y, b.z}, *target.GetAbility());
+        }
+    }
 
     hasHit = shot.kind != pgame::ShotResult::Kind::None;
     if (hasHit)
@@ -379,7 +471,6 @@ void Game::Shoot()
     // Kick after the bullet has left: this shot used the aim from before the kick
     player.AddRecoil(weapon.GetRecoilKick(), side(rng) * weapon.GetRecoilSideways());
 }
-
 void Game::DrawCrossHair() const
 {
     const int cx = GetScreenWidth() / 2;
@@ -392,14 +483,14 @@ void Game::DrawTargets() const
 {
     for (const Target &t : targets)
     {
-        if (!t.IsAlive())
+        if (!t.IsAlive() || !t.IsVisible())
             continue;
 
         const Box &b = t.GetHitbox();
         const Vector3 center = {b.x, b.y + b.height * 0.5f, b.z};
 
         // Green when healthy, shifting to red as health drops
-        const float ratio = static_cast<float>(t.GetHealth()) / kTargetMaxHealth;
+        const float ratio = static_cast<float>(t.GetHealth()) / t.GetMaxHealth();
         const Color color = {static_cast<unsigned char>(255 * (1.0f - ratio)),
                              static_cast<unsigned char>(255 * ratio), 0, 255};
 

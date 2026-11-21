@@ -3,19 +3,10 @@
 #include <array>
 #include <optional>
 
+#include "ability_type.h"
+
 namespace pgame
 {
-
-enum class AbilityType
-{
-    Camo,
-    SuperSpeed,
-    Blink,
-    InvertedControls,
-    Giant
-};
-
-inline constexpr int kAbilityTypeCount = 5; // keep in sync with AbilityType
 
 enum class AddResult
 {
@@ -47,8 +38,6 @@ struct AbilityEffects
     bool camo = false;
     bool canBlink = false;
 };
-
-const char *AbilityName(AbilityType type);
 
 class AbilitySlots
 {
